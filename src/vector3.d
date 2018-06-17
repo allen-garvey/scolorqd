@@ -19,3 +19,8 @@ vec3 createVec3(float a, float b, float c){
 
 	return ret;
 }
+
+float dotProduct(vec3 a, vec3 b){
+	vec3 product = a * b;
+	return product.array[0] + product.array[1] + product.array[2];
+}
