@@ -2,6 +2,7 @@ module scolorqd.quantize;
 
 import std.math;
 import std.random;
+import std.algorithm.comparison;
 import scolorqd.vector3;
 import scolorqd.matrix2d;
 import scolorqd.matrix3d;
@@ -150,6 +151,65 @@ Matrix2d[] initialAArray(Matrix2d image, Matrix2d b0){
     return ret;
 }
 
+void sumCoarsen(Matrix2d fine, Matrix2d coarse){
+    for(int y=0; y<coarse.width; y++){
+		for(int x=0; x<coarse.width; x++){
+	    	float divisor = 1.0;
+	    	vec3 val = matrix2dGet(fine, x*2, y*2);
+	    	if(x*2 + 1 < fine.width){
+				divisor += 1;
+				val += matrix2dGet(fine, x*2 + 1, y*2);
+	    	}
+	    	if(y*2 + 1 < fine.height){
+				divisor += 1;
+				val += matrix2dGet(fine, x*2, y*2 + 1);
+	    	}
+	    	if(x*2 + 1 < fine.width && y*2 + 1 < fine.height){
+				divisor += 1;
+				val += matrix2dGet(fine, x*2 + 1, y*2 + 1);
+	    	}
+	    	matrix2dSet(coarse, x, y, val);
+		}
+    }
+}
+
+void finishInitializingAAndBArrays(Matrix2d filterWeights, Matrix2d[] aArray, Matrix2d[] bArray, int maxCoarseLevel, int imageWidth, int imageHeight){
+
+	immutable int radiusWidth  = (filterWeights.width - 1) / 2;
+	immutable int radiusHeight = (filterWeights.height - 1) / 2;
+	immutable int createdMatrixWidth = max(3, bArray[bArray.length - 1].width - 2);
+	immutable int createdMatrixHeight = max(3, bArray[bArray.length - 1].height - 2);
+
+    for(int coarse_level=1;coarse_level <= maxCoarseLevel;coarse_level++){
+	    Matrix2d bi = createMatrix2d(createdMatrixWidth, createdMatrixHeight);
+		for(int k_y=0; k_y<bi.height; k_y++){
+	    	for(int k_x=0; k_x<bi.width; k_x++){
+				for(int i_y=radiusHeight*2; i_y<radiusHeight*2+2; i_y++){
+		    		for(int i_x=radiusWidth*2; i_x<radiusWidth*2+2; i_x++){
+						for(int j_y=k_y*2; j_y<k_y*2+2; j_y++){
+			    			for(int j_x=k_x*2; j_x<k_x*2+2; j_x++){
+			    				vec3 currentValue = matrix2dGet(bi, k_x, k_y);
+			    				vec3 previousBValue = bValue(bArray[bArray.length - 1], i_x, i_y, j_x, j_y);
+			    				matrix2dSet(bi, k_x, k_y, currentValue + previousBValue);
+			    			}
+						}
+		    		}
+				}
+	    	}
+		}
+		bArray ~= bi;
+
+		Matrix2d ai = createMatrix2d(imageWidth >> coarse_level, imageHeight >> coarse_level);
+		sumCoarsen(aArray[aArray.length - 1], ai);
+		aArray ~= ai;
+    }
+
+
+}
+
+
+
+
 
 vec3[] spatialColorQuant(Matrix2d image, int numColors){
 	//constants (function arguments)
@@ -168,6 +228,7 @@ vec3[] spatialColorQuant(Matrix2d image, int numColors){
 
 	Matrix2d[] bArray = initialBArray(filterWeights);
 	Matrix2d[] aArray = initialAArray(image, bArray[0]);
+	finishInitializingAAndBArrays(filterWeights, aArray, bArray, maxCoarseLevel, image.width, image.height);
 
 	return palette;
 }
