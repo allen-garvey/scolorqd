@@ -203,13 +203,48 @@ void finishInitializingAAndBArrays(Matrix2d filterWeights, Matrix2d[] aArray, Ma
 		sumCoarsen(aArray[aArray.length - 1], ai);
 		aArray ~= ai;
     }
-
-
 }
 
+void calculateSMatrix(Matrix2d s, Matrix3d coarseVariables, Matrix2d b){
+    immutable int paletteSize  = s.width;
+    immutable int coarseWidth  = coarseVariables.width;
+    immutable int coarseHeight = coarseVariables.height;
+    immutable int centerX = (b.width-1)/2;
+    immutable int centerY = (b.height-1)/2;
+    immutable vec3 centerB = bValue(b, 0, 0, 0, 0);
+    
+    for(int i=0;i<s.data.length;i++){
+    	s.data[i] = 0.0;
+    }
 
-
-
+    for (int i_y=0; i_y<coarseHeight; i_y++) {
+		for (int i_x=0; i_x<coarseWidth; i_x++) {
+	    	immutable int max_j_x = min(coarseWidth,  i_x - centerX + b.width);
+	    	immutable int max_j_y = min(coarseHeight, i_y - centerY + b.height);
+	    	for(int j_y=max(0, i_y - centerY); j_y<max_j_y; j_y++){
+				for(int j_x=max(0, i_x - centerX); j_x<max_j_x; j_x++){
+		    		if (i_x == j_x && i_y == j_y){
+		    			continue;
+		    		}
+		    		immutable vec3 b_ij = bValue(b,i_x,i_y,j_x,j_y);
+		    		for (int v=0; v<paletteSize; v++) {
+						for (int alpha=v; alpha<paletteSize; alpha++) {
+							immutable vec3 product = matrix3dGet(coarseVariables, i_x, i_y, v) * matrix3dGet(coarseVariables, j_x, j_y, alpha) * b_ij;
+							vec3 sValue = matrix2dGet(s, v, alpha);
+							matrix2dSet(s, v, alpha, sValue + product);
+						}
+		    		}
+				}
+	    	}	    
+	    	for(int v=0; v<paletteSize; v++){
+	    		vec3 coarseVariablesValue = matrix3dGet(coarseVariables, i_x, i_y, v);
+	    		vec3 product = coarseVariablesValue * centerB;
+	    		vec3 sValue = matrix2dGet(s, v, v);
+	    		matrix2dSet(s, v, v, sValue + product);
+	    	}
+		}
+    }
+}
 
 vec3[] spatialColorQuant(Matrix2d image, int numColors){
 	//constants (function arguments)
@@ -218,6 +253,9 @@ vec3[] spatialColorQuant(Matrix2d image, int numColors){
 	immutable int maxCoarseLevel = computeMaxCoarseLeve(image.width, image.height);
 	immutable double initialTemperature = 1.0;
 	immutable double finalTemperature = 0.001;
+
+	immutable int iterationsPerLevel = tempsPerLevel;
+	immutable double temperatureMultiplier = pow(finalTemperature/initialTemperature, 1.0/(max(3, maxCoarseLevel*iterationsPerLevel)));
 
 	//variables
 	auto temperature = initialTemperature;
@@ -229,6 +267,18 @@ vec3[] spatialColorQuant(Matrix2d image, int numColors){
 	Matrix2d[] bArray = initialBArray(filterWeights);
 	Matrix2d[] aArray = initialAArray(image, bArray[0]);
 	finishInitializingAAndBArrays(filterWeights, aArray, bArray, maxCoarseLevel, image.width, image.height);
+
+
+
+
+	//loop variables
+	int coarseLevel = maxCoarseLevel;
+	int iterationsAtCurrentLevel = 0;
+    bool shouldSkipPaletteMainenance = false;
+
+	Matrix2d s = createMatrix2d(numColors, numColors);
+	calculateSMatrix(s, coarseVariables, bArray[coarseLevel]);
+
 
 	return palette;
 }
