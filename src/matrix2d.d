@@ -19,11 +19,21 @@ Matrix2d createMatrix2d(int width, int height){
 	return ret;
 }
 
-void matrix2dSet(Matrix2d matrix, int x, int y, vec3 value){
+void matrix2dSet(Matrix2d matrix, int x, int y, vec3 value)
+in{
+	assert(x >= 0 && x < matrix.width);
+	assert(y >= 0 && y < matrix.height);
+}
+do{
 	matrix.data[y*matrix.width + x] = value;
 }
 
-vec3 matrix2dGet(Matrix2d matrix, int x, int y){
+vec3 matrix2dGet(Matrix2d matrix, int x, int y)
+in{
+	assert(x >= 0 && x < matrix.width);
+	assert(y >= 0 && y < matrix.height);
+}
+do{
 	return matrix.data[y*matrix.width + x];
 }
 
