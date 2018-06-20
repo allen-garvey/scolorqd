@@ -246,6 +246,18 @@ void calculateSMatrix(Matrix2d s, Matrix3d coarseVariables, Matrix2d b){
     }
 }
 
+void computeJPaletteSum(Matrix2d jPaletteSum, Matrix3d coarseVariables, vec3[] palette){
+    for (int j_y=0; j_y<coarseVariables.height; j_y++){
+	 	for(int j_x=0; j_x<coarseVariables.width; j_x++){
+	    	vec3 paletteSum = 0.0;
+	    	for(int alpha=0; alpha < palette.length; alpha++){
+		 		paletteSum += matrix3dGet(coarseVariables, j_x, j_y, alpha) * palette[alpha];
+	     	}
+	     	matrix2dSet(jPaletteSum, j_x, j_y, paletteSum);
+	 	}
+     }
+}
+
 vec3[] spatialColorQuant(Matrix2d image, int numColors){
 	//constants (function arguments)
 	immutable int tempsPerLevel = 3;
@@ -268,8 +280,8 @@ vec3[] spatialColorQuant(Matrix2d image, int numColors){
 	Matrix2d[] aArray = initialAArray(image, bArray[0]);
 	finishInitializingAAndBArrays(filterWeights, aArray, bArray, maxCoarseLevel, image.width, image.height);
 
-
-
+	Matrix2d jPaletteSum = createMatrix2d(coarseVariables.width, coarseVariables.height);
+	computeJPaletteSum(jPaletteSum, coarseVariables, palette);
 
 	//loop variables
 	int coarseLevel = maxCoarseLevel;
