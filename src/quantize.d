@@ -291,6 +291,21 @@ vec3[] spatialColorQuant(Matrix2d image, int numColors){
 	Matrix2d s = createMatrix2d(numColors, numColors);
 	calculateSMatrix(s, coarseVariables, bArray[coarseLevel]);
 
+	// Multiscale annealing
+	while(coarseLevel >= 0 || temperature > finalTemperature){
+		//TODO: check to see if we need to reseat coarse variables reference
+
+		Matrix2d a = aArray[coarseLevel];
+		Matrix2d b = bArray[coarseLevel];
+		vec3 middleB = bValue(b, 0, 0, 0, 0);
+		immutable int centerX = (b.width - 1) / 2;
+		immutable int centerY = (b.height - 1) / 2;
+		for(int repeat=0, stepCounter=0; repeat<repeatsPerTemp; repeat++){
+
+		}
+
+	}
+
 
 	return palette;
 }
